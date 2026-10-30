@@ -25,44 +25,67 @@ export function RegisterForm() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError(null);
+    setNotice(null);
 
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          name: formData.name,
-          business_name: formData.businessName,
-          country: formData.country,
-          currency: formData.currency,
+    try {
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+          data: {
+            name: formData.name.trim(),
+            business_name: formData.businessName.trim(),
+            country: formData.country.trim(),
+            currency: formData.currency,
+          },
         },
-      },
-    });
+      });
 
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
-    }
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+      if (!authData.user) {
+        setError("Supabase did not return an account. Please try again later.");
+        return;
+      }
 
-    if (authData.user) {
-      // Create user profile
-      await supabase.from("user_profiles").insert({
+      // Email-confirmation flows have no session yet. RLS prevents writing a
+      // profile as an unauthenticated user, so do not attempt that insert.
+      if (!authData.session) {
+        setNotice("Registration request accepted. If this email is new, check your inbox for a confirmation link before signing in. If no email arrives, check Supabase Auth Logs and email limits.");
+        return;
+      }
+
+      const { error: profileError } = await supabase.from("user_profiles").upsert({
         id: authData.user.id,
         email: authData.user.email!,
-        name: formData.name,
-      });
-    }
+        name: formData.name.trim(),
+      }, { onConflict: "id" });
 
-    router.push("/onboarding");
-    router.refresh();
+      if (profileError) {
+        // Account creation succeeded; avoid telling the user to register again.
+        setNotice("Your account was created, but its profile could not be saved. Please contact support with this error: " + profileError.message);
+        return;
+      }
+
+      router.push("/onboarding");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to complete registration. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignUp = async () => {
@@ -86,6 +109,9 @@ export function RegisterForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {notice && (
+          <Alert className="mb-4"><AlertDescription>{notice}</AlertDescription></Alert>
+        )}
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
