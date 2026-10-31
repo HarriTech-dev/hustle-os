@@ -71,11 +71,22 @@ export function Sidebar({ user, businessName }: { user: User; businessName?: str
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar border-r transform transition-transform duration-200 ease-in-out lg:transform-none ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        } flex flex-col`}
-      >
+      
+{/* Sidebar */}
+<aside
+  className={`
+    fixed inset-y-0 left-0 z-40
+    flex h-screen w-64 shrink-0 flex-col
+    overflow-y-auto
+    border-r border-sidebar-border
+    bg-sidebar
+    transition-transform duration-200 ease-in-out
+    ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+    lg:sticky lg:top-0 lg:h-screen
+    lg:translate-x-0 lg:transition-none
+  `}
+>
+
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
