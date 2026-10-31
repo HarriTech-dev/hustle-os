@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,9 +7,19 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LogIn, Mail } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Mail } from "lucide-react";
 import Link from "next/link";
 
 export function LoginForm() {
@@ -16,36 +27,82 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const router = useRouter();
+  const [supabase] = useState(() => createClient());
+
+  // Read the redirect message without requiring useSearchParams
+  // or a Suspense boundary in the Next.js login page.
+  const [notice] = useState(() => {
+    if (typeof window === "undefined") return null;
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("registered") === "1") {
+      return "Registration received! Please check your email and confirm your account before signing in.";
+    }
+
+    if (params.get("reset") === "sent") {
+      return "Password-reset request received. If an account exists with that email, check your inbox and spam folder for instructions.";
+    }
+
+    return null;
+  });
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-    if (error) {
-      setError(error.message);
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to sign in. Please try again."
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   };
 
   const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    setError(null);
+
+    try {
+      const { error: oauthError } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+      if (oauthError) {
+        setError(oauthError.message);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to connect to Google. Please try again."
+      );
+    }
   };
 
   return (
@@ -54,17 +111,29 @@ export function LoginForm() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <span className="text-2xl font-bold">H</span>
         </div>
-        <CardTitle className="text-3xl font-bold tracking-tight">Welcome back</CardTitle>
+
+        <CardTitle className="text-3xl font-bold tracking-tight">
+          Welcome back
+        </CardTitle>
+
         <CardDescription className="text-base">
           Enter your credentials to access your business
         </CardDescription>
       </CardHeader>
+
       <CardContent>
+        {notice && (
+          <Alert className="mb-4">
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        )}
+
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
@@ -72,49 +141,74 @@ export function LoginForm() {
               id="email"
               type="email"
               placeholder="name@business.com"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               className="h-11"
             />
           </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-primary hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>
+
             <Input
               id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               className="h-11"
             />
           </div>
-          <Button type="submit" className="w-full h-11 text-base font-semibold mt-6" disabled={loading}>
+
+          <Button
+            type="submit"
+            className="w-full h-11 text-base font-semibold mt-6"
+            disabled={loading}
+          >
             {loading ? "Signing in..." : "Sign in to HustleOS"}
           </Button>
         </form>
+
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            <span className="bg-card px-2 text-muted-foreground">
+              Or continue with
+            </span>
           </div>
         </div>
-        <Button variant="outline" className="w-full h-11" onClick={handleGoogleSignIn}>
+
+        <Button
+          variant="outline"
+          className="w-full h-11"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+        >
           <Mail className="mr-2 h-4 w-4" />
           Google
         </Button>
       </CardContent>
+
       <CardFooter className="flex flex-col items-center justify-center border-t p-6">
         <div className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-semibold text-primary hover:underline">
+          <Link
+            href="/register"
+            className="font-semibold text-primary hover:underline"
+          >
             Create one now
           </Link>
         </div>
