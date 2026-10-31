@@ -1,6 +1,0 @@
-PASS package.json
-PASS src/app/api/ai/chat/route.ts
-PASS src/app/api/payments/paystack/webhook/route.ts
-PASS supabase
-PASS no .env secret files in source tree
-NOTE: Static preflight does not replace npm run build, RLS tests, or payment/WhatsApp integration tests.
