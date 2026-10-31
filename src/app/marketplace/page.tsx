@@ -6,9 +6,11 @@ import { publishListing,unpublishListing } from "./actions";
 export default async function MarketplacePage({searchParams}:{searchParams:Promise<{error?:string;published?:string;unpublished?:string}>}){
  const params=await searchParams;const db=await createClient();const {data:{user}}=await db.auth.getUser();if(!user)redirect("/login");
  const [{data:business},{data:inventory},{data:listings}]=await Promise.all([db.from("business_settings").select("business_name").eq("user_id",user.id).maybeSingle(),db.from("inventory").select("id,name,quantity,unit_price,currency").eq("user_id",user.id).order("name").limit(100),db.from("marketplace_listings").select("inventory_id,is_published,whatsapp_number").eq("owner_id",user.id)]);
- type MarketplaceListing = {
+
+type MarketplaceListing = {
   inventory_item_id: string;
   is_published: boolean;
+  whatsapp_number: string | null;
 };
 
 const published = new Map<string, MarketplaceListing>(
