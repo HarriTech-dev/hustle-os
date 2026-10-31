@@ -1,0 +1,7 @@
+import { createClient } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
+export default async function ShopPage() {
+ const supabase = await createClient();
+ const {data:items,error} = await supabase.from("marketplace_listings").select("id,title,description,price,currency,whatsapp_number").eq("is_published",true).order("created_at",{ascending:false}).limit(60);
+ return <main className="mx-auto max-w-6xl p-6 space-y-6"><header><h1 className="text-3xl font-bold">HustleOS Marketplace</h1><p>Browse products and contact sellers directly on WhatsApp. Payments are arranged with the seller.</p></header>{error?<p role="alert">Marketplace is temporarily unavailable. Ensure migration 006 has been applied.</p>:<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{items?.map(item=>{const message=`Hello, I'm interested in ${item.title} listed on HustleOS Marketplace.`;const url=`https://wa.me/${item.whatsapp_number}?text=${encodeURIComponent(message)}`;return <article key={item.id} className="rounded-xl border p-5 space-y-3"><h2 className="text-xl font-semibold">{item.title}</h2><p className="text-sm">{item.description}</p><p className="font-semibold">{item.currency} {Number(item.price).toLocaleString()}</p><a className="inline-block rounded bg-green-700 px-4 py-2 text-white" href={url} target="_blank" rel="noopener noreferrer">Contact seller on WhatsApp</a></article>})}{!items?.length&&<p>No products have been published yet.</p>}</div>}</main>;
+}
