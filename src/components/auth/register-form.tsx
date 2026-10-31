@@ -62,10 +62,12 @@ export function RegisterForm() {
 
       // Email-confirmation flows have no session yet. RLS prevents writing a
       // profile as an unauthenticated user, so do not attempt that insert.
-      if (!authData.session) {
-        setNotice("Registration request accepted. If this email is new, check your inbox for a confirmation link before signing in. If no email arrives, check Supabase Auth Logs and email limits.");
-        return;
-      }
+     
+if (!authData.session) {
+  router.replace("/login?registered=1");
+  return;
+}
+
 
       const { error: profileError } = await supabase.from("user_profiles").upsert({
         id: authData.user.id,
