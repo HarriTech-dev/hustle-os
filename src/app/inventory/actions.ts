@@ -31,7 +31,17 @@ export async function addInventoryItem(formData: FormData) {
     low_stock_threshold: threshold,
     currency: "NGN",
   });
-  if (error) redirect("/inventory?error=save");
+ 
+if (error) {
+  console.error("Inventory insert failed", {
+    code: error.code,
+    message: error.message,
+    details: error.details,
+  });
+
+  redirect("/inventory?error=save");
+}
+
   revalidatePath("/inventory");
   revalidatePath("/marketplace");
   revalidatePath("/notifications");
