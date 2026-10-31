@@ -14,7 +14,7 @@ export function DashboardLayout({
   businessName?: string;
 }) {
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-dvh w-full min-w-0 overflow-hidden">
       <Sidebar user={user} businessName={businessName} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header user={user} />
