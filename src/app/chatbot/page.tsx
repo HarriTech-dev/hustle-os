@@ -1,0 +1,8 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+export default function ChatbotPage() {
+ const [message,setMessage]=useState(""); const [answer,setAnswer]=useState(""); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
+ async function send(e:React.FormEvent){e.preventDefault();setLoading(true);setError("");setAnswer("");try{const res=await fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Request failed");setAnswer(data.answer);}catch(e){setError(e instanceof Error?e.message:"Request failed");}finally{setLoading(false);}}
+ return <main className="mx-auto max-w-2xl p-8 space-y-6"><Link href="/dashboard" className="underline">← Dashboard</Link><h1 className="text-3xl font-bold">HustleOS AI Chatbot</h1><p>Ask about business planning, marketing, customer service, or sales. Do not enter confidential information.</p><form onSubmit={send} className="space-y-3"><label htmlFor="question" className="block font-medium">Your question</label><textarea id="question" className="w-full rounded-lg border p-3 text-black" rows={5} maxLength={2500} value={message} onChange={e=>setMessage(e.target.value)} required/><button disabled={loading||!message.trim()} className="rounded-lg bg-blue-700 px-5 py-2 text-white disabled:opacity-50">{loading?"Thinking…":"Ask AI"}</button></form>{error&&<p role="alert" className="text-red-600">{error}</p>}{answer&&<section aria-live="polite" className="whitespace-pre-wrap rounded-lg border p-5"><h2 className="mb-2 font-semibold">Answer</h2>{answer}</section>}</main>;
+}
