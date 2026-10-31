@@ -1,22 +1,49 @@
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const requestedNext = searchParams.get("next") ?? (searchParams.get("type") === "recovery" ? "/reset-password" : "/dashboard");
-  // Only allow same-origin relative paths; never redirect to an attacker-controlled host.
-  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") && !requestedNext.startsWith("/\\")
-    ? requestedNext
-    : "/dashboard";
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const type = url.searchParams.get("type");
+  const requestedNext = url.searchParams.get("next");
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(new URL(next, origin));
-    }
+  const isRecovery =
+    type === "recovery" ||
+    requestedNext === "/reset-password";
+
+  // Restrict redirects to explicitly allowed local routes.
+  const allowedPaths = new Set([
+    "/dashboard",
+    "/onboarding",
+    "/reset-password",
+  ]);
+
+  const next =
+    isRecovery
+      ? "/reset-password"
+      : requestedNext && allowedPaths.has(requestedNext)
+        ? requestedNext
+        : "/dashboard";
+
+  if (!code) {
+    return NextResponse.redirect(
+      new URL("/login?error=auth-callback-error", url.origin)
+    );
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth-callback-error`);
+  const supabase = await createClient();
+
+  const { error } =
+    await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    return NextResponse.redirect(
+      new URL("/login?error=auth-callback-error", url.origin)
+    );
+  }
+
+  return NextResponse.redirect(
+    new URL(next, url.origin)
+  );
 }
