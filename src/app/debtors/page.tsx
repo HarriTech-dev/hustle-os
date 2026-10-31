@@ -1,0 +1,10 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
+import Link from "next/link";
+export default async function DebtorsPage(){
+ const db=await createClient();const {data:{user}}=await db.auth.getUser();if(!user)redirect("/login");
+ const [{data:business},{data:invoices,error}]=await Promise.all([db.from("business_settings").select("business_name").eq("user_id",user.id).maybeSingle(),db.from("invoices").select("id,customer_name,amount,currency,status,due_date").eq("user_id",user.id).order("due_date",{ascending:true}).limit(500)]);
+ const outstanding=(invoices||[]).filter(i=>!["paid","cancelled","canceled","draft"].includes(i.status));const today=new Date().toISOString().slice(0,10);
+ return <DashboardLayout user={user} businessName={business?.business_name}><main className="space-y-5"><h1 className="text-3xl font-bold">Debtors & receivables</h1><p className="text-muted-foreground">Unpaid sent and overdue invoices from your existing records. No separate debt ledger or automatic payment collection is created.</p>{error?<p role="alert">Unable to load invoices: {error.message}</p>:<div className="rounded-xl border overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b"><th className="p-3">Customer</th><th className="p-3">Amount</th><th className="p-3">Due date</th><th className="p-3">Status</th></tr></thead><tbody>{outstanding.map(i=><tr key={i.id} className="border-b"><td className="p-3">{i.customer_name}</td><td className="p-3">{i.currency||""} {Number(i.amount).toLocaleString()}</td><td className="p-3">{i.due_date||"Not set"}</td><td className="p-3">{i.due_date&&i.due_date<today?"Past due":i.status}</td></tr>)}</tbody></table>{!outstanding.length?<p className="p-4">No outstanding sent invoices found.</p>:null}</div>}<Link href="/invoices" className="underline">Manage invoices</Link><p className="text-sm text-muted-foreground">Showing up to 500 invoices. Confirm payments before marking any invoice as paid.</p></main></DashboardLayout>;
+}
