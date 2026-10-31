@@ -18,7 +18,16 @@ export default async function WhatsAppInboxPage() {
     ? await db.from("whatsapp_messages").select("id,connection_id,customer_wa_id,direction,body,message_type,created_at")
         .in("connection_id", ids).order("created_at", { ascending: false }).limit(100)
     : { data: [], error: null };
-  const byId = new Map((connections ?? []).map(c => [c.id, c]));
+  type WhatsAppConnectionSummary = {
+    id: string;
+    display_phone_number: string | null;
+  };
+  const byId = new Map<string, WhatsAppConnectionSummary>(
+    (connections ?? []).map((c) => [
+      c.id,
+      { id: c.id, display_phone_number: c.display_phone_number },
+    ])
+  );
   return <DashboardLayout user={user} businessName={business?.business_name}>
     <section className="space-y-6">
       <header><h1 className="text-3xl font-bold">WhatsApp inbox</h1>
